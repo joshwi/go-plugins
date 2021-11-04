@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/joshwi/go-utils/parser"
+	"github.com/joshwi/go-utils/utils"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
 )
 
@@ -29,9 +30,9 @@ func Connect(url string, username string, password string) neo4j.Driver {
 	return driver
 }
 
-func RunCypher(session neo4j.Session, query string) [][]parser.Tag {
+func RunCypher(session neo4j.Session, query string) [][]utils.Tag {
 
-	output := [][]parser.Tag{}
+	output := [][]utils.Tag{}
 
 	// defer session.Close()
 
@@ -41,11 +42,11 @@ func RunCypher(session neo4j.Session, query string) [][]parser.Tag {
 	}
 
 	for result.Next() {
-		entry := []parser.Tag{}
+		entry := []utils.Tag{}
 		keys := result.Record().Keys()
 		for n := 0; n < len(keys); n++ {
 			value := fmt.Sprintf("%v", result.Record().GetByIndex(n))
-			input := parser.Tag{
+			input := utils.Tag{
 				Name:  keys[n],
 				Value: value,
 			}
@@ -149,7 +150,7 @@ func StoreDB(driver neo4j.Driver, params map[string]string, label string, bucket
 	session.Close()
 }
 
-func RunScript(driver neo4j.Driver, entry []parser.Tag, config parser.Config, wg *sync.WaitGroup) {
+func RunScript(driver neo4j.Driver, entry []parser.Tag, config utils.Config, wg *sync.WaitGroup) {
 
 	// Convert params from struct [][]parser.Tag -> map[string]string
 	params := map[string]string{}
