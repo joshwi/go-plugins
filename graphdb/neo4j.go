@@ -58,11 +58,11 @@ func RunCypher(session neo4j.Session, query string) [][]utils.Tag {
 	return output
 }
 
-// func GetNode(driver string, node string, query string) [][]parser.Tag {
-// 	return [][]parser.Tag{}
+// func GetNode(driver string, node string, query string) [][]utils.Tag {
+// 	return [][]utils.Tag{}
 // }
 
-func PostNode(session neo4j.Session, node string, label string, properties []parser.Tag) string {
+func PostNode(session neo4j.Session, node string, label string, properties []utils.Tag) string {
 
 	cypher := `CREATE (n: ` + node + ` { label: "` + label + `" })`
 
@@ -88,7 +88,7 @@ func PostNode(session neo4j.Session, node string, label string, properties []par
 	return output
 }
 
-func PutNode(session neo4j.Session, node string, label string, properties []parser.Tag) string {
+func PutNode(session neo4j.Session, node string, label string, properties []utils.Tag) string {
 
 	cypher := `MERGE (n: ` + node + ` { label: "` + label + `" })`
 
@@ -119,7 +119,7 @@ func PutNode(session neo4j.Session, node string, label string, properties []pars
 // func DeleteNode(driver string, node string, label string) {
 // }
 
-func StoreDB(driver neo4j.Driver, params map[string]string, label string, bucket string, data parser.Output, wg *sync.WaitGroup) {
+func StoreDB(driver neo4j.Driver, params map[string]string, label string, bucket string, data utils.Output, wg *sync.WaitGroup) {
 
 	count := []string{}
 
@@ -133,7 +133,7 @@ func StoreDB(driver neo4j.Driver, params map[string]string, label string, bucket
 
 	for _, item := range data.Collections {
 		for n, entry := range item.Value {
-			properties := []parser.Tag{}
+			properties := []utils.Tag{}
 			properties = append(properties, data.Tags...)
 			properties = append(properties, entry...)
 			new_bucket := bucket + "_" + item.Name
@@ -150,9 +150,9 @@ func StoreDB(driver neo4j.Driver, params map[string]string, label string, bucket
 	session.Close()
 }
 
-func RunScript(driver neo4j.Driver, entry []parser.Tag, config utils.Config, wg *sync.WaitGroup) {
+func RunScript(driver neo4j.Driver, entry []utils.Tag, config utils.Config, wg *sync.WaitGroup) {
 
-	// Convert params from struct [][]parser.Tag -> map[string]string
+	// Convert params from struct [][]utils.Tag -> map[string]string
 	params := map[string]string{}
 
 	for _, item := range entry {
