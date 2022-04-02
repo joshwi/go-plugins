@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/joshwi/go-utils/logger"
 	"github.com/joshwi/go-utils/parser"
 	"github.com/joshwi/go-utils/utils"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
@@ -22,10 +23,6 @@ func Connect(url string, username string, password string) neo4j.Driver {
 	if err != nil {
 		log.Println(err)
 	}
-
-	// handle driver lifetime based on your application lifetime requirements
-	// driver's lifetime is usually bound by the application lifetime, which usually implies one driver instance per application
-	// defer driver.Close()
 
 	return driver
 }
@@ -58,10 +55,6 @@ func RunCypher(session neo4j.Session, query string) [][]utils.Tag {
 	return output
 }
 
-// func GetNode(driver string, node string, query string) [][]utils.Tag {
-// 	return [][]utils.Tag{}
-// }
-
 func PostNode(session neo4j.Session, node string, label string, properties []utils.Tag) string {
 
 	cypher := `CREATE (n: ` + node + ` { label: "` + label + `" })`
@@ -82,8 +75,6 @@ func PostNode(session neo4j.Session, node string, label string, properties []uti
 	counters := summary.Counters()
 
 	output := fmt.Sprintf(`[ Function: PutNode ] [ Label: %v ] [ Node: %v ] [ Properties Set: %v ]`, label, node, counters.PropertiesSet())
-
-	log.Println(output)
 
 	return output
 }
@@ -109,8 +100,6 @@ func PutNode(session neo4j.Session, node string, label string, properties []util
 	counters := summary.Counters()
 
 	output := fmt.Sprintf(`[ Function: PutNode ] [ Label: %v ] [ Node: %v ] [ Properties Set: %v ]`, label, node, counters.PropertiesSet())
-
-	// log.Println(output)
 
 	return output
 
@@ -143,9 +132,7 @@ func StoreDB(driver neo4j.Driver, params map[string]string, label string, bucket
 		}
 	}
 
-	output := fmt.Sprintf(`[ Function: StoreDB ] [ Collector: %v ] [ Query: %v ] [ Nodes Created: %v ]`, bucket, params, len(count))
-
-	log.Println(output)
+	logger.Logger.Info().Str("collector", bucket).Str("query", fmt.Sprintf("%v", params)).Int("nodes", len(count)).Msg("Store DB")
 
 	session.Close()
 }
