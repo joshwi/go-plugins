@@ -7,25 +7,24 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/joshwi/go-utils/logger"
 	"github.com/joshwi/go-utils/parser"
 	"github.com/joshwi/go-utils/utils"
-	"github.com/neo4j/neo4j-go-driver/neo4j"
+
+	// "github.com/neo4j/neo4j-go-driver/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
 var regexp_1 = regexp.MustCompile(`"`)
 
 func Connect(url string, username string, password string) neo4j.Driver {
 
-	Neo4jConfig := func(conf *neo4j.Config) { conf.Encrypted = false }
+	Neo4jConfig := func(conf *neo4j.Config) {}
 
 	driver, err := neo4j.NewDriver(url, neo4j.BasicAuth(username, password, ""), Neo4jConfig)
 	if err != nil {
 		log.Println(err)
 	}
-
-	// handle driver lifetime based on your application lifetime requirements
-	// driver's lifetime is usually bound by the application lifetime, which usually implies one driver instance per application
-	// defer driver.Close()
 
 	return driver
 }
@@ -43,7 +42,7 @@ func RunCypher(session neo4j.Session, query string) [][]utils.Tag {
 
 	for result.Next() {
 		entry := []utils.Tag{}
-		keys := result.Record().Keys()
+		keys := result.Record().Keys
 		for n := 0; n < len(keys); n++ {
 			value := fmt.Sprintf("%v", result.Record().GetByIndex(n))
 			input := utils.Tag{
@@ -58,10 +57,6 @@ func RunCypher(session neo4j.Session, query string) [][]utils.Tag {
 	return output
 }
 
-// func GetNode(driver string, node string, query string) [][]utils.Tag {
-// 	return [][]utils.Tag{}
-// }
-
 func PostNode(session neo4j.Session, node string, label string, properties []utils.Tag) string {
 
 	cypher := `CREATE (n: ` + node + ` { label: "` + label + `" })`
@@ -72,18 +67,12 @@ func PostNode(session neo4j.Session, node string, label string, properties []uti
 
 	// cypher = regexp_1.ReplaceAllString(cypher, "'")
 
-	result, err := session.Run(cypher, map[string]interface{}{})
+	_, err := session.Run(cypher, map[string]interface{}{})
 	if err != nil {
 		log.Println(err)
 	}
 
-	summary, err := result.Summary()
-
-	counters := summary.Counters()
-
-	output := fmt.Sprintf(`[ Function: PutNode ] [ Label: %v ] [ Node: %v ] [ Properties Set: %v ]`, label, node, counters.PropertiesSet())
-
-	log.Println(output)
+	output := fmt.Sprintf(`[ Function: PutNode ] [ Label: %v ] [ Node: %v ]`, label, node)
 
 	return output
 }
@@ -96,21 +85,12 @@ func PutNode(session neo4j.Session, node string, label string, properties []util
 		cypher += ` SET n.` + item.Name + ` = "` + regexp_1.ReplaceAllString(item.Value, "\\'") + `"`
 	}
 
-	result, err := session.Run(cypher, map[string]interface{}{})
+	_, err := session.Run(cypher, map[string]interface{}{})
 	if err != nil {
 		log.Println(err)
 	}
 
-	summary, err := result.Summary()
-	if err != nil {
-		log.Println(err)
-	}
-
-	counters := summary.Counters()
-
-	output := fmt.Sprintf(`[ Function: PutNode ] [ Label: %v ] [ Node: %v ] [ Properties Set: %v ]`, label, node, counters.PropertiesSet())
-
-	// log.Println(output)
+	output := fmt.Sprintf(`[ Function: PutNode ] [ Label: %v ] [ Node: %v ]`, label, node)
 
 	return output
 
@@ -126,10 +106,7 @@ func StoreDB(driver neo4j.Driver, params map[string]string, label string, bucket
 	defer wg.Done()
 
 	sessionConfig := neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite}
-	session, err := driver.NewSession(sessionConfig)
-	if err != nil {
-		log.Println(err)
-	}
+	session := driver.NewSession(sessionConfig)
 
 	for _, item := range data.Collections {
 		for n, entry := range item.Value {
@@ -143,9 +120,7 @@ func StoreDB(driver neo4j.Driver, params map[string]string, label string, bucket
 		}
 	}
 
-	output := fmt.Sprintf(`[ Function: StoreDB ] [ Collector: %v ] [ Query: %v ] [ Nodes Created: %v ]`, bucket, params, len(count))
-
-	log.Println(output)
+	logger.Logger.Info().Str("collector", bucket).Str("query", fmt.Sprintf("%v", params)).Int("nodes", len(count)).Msg("Store DB")
 
 	session.Close()
 }
