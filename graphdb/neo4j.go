@@ -2,7 +2,6 @@ package graphdb
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"strconv"
 	"sync"
@@ -23,13 +22,15 @@ func Connect(url string, username string, password string) neo4j.Driver {
 
 	driver, err := neo4j.NewDriver(url, neo4j.BasicAuth(username, password, ""), Neo4jConfig)
 	if err != nil {
-		log.Println(err)
+		logger.Logger.Error().Str("url", url).Str("status", "Failed").Err(err).Msg("Connect")
+		return nil
 	}
+	logger.Logger.Info().Str("url", url).Str("status", "Success").Msg("Connect")
 
 	return driver
 }
 
-func RunCypher(session neo4j.Session, query string) [][]utils.Tag {
+func RunCypher(session neo4j.Session, query string) ([][]utils.Tag, error) {
 
 	output := [][]utils.Tag{}
 
@@ -37,7 +38,8 @@ func RunCypher(session neo4j.Session, query string) [][]utils.Tag {
 
 	result, err := session.Run(query, map[string]interface{}{})
 	if err != nil {
-		log.Println(err)
+		logger.Logger.Error().Str("status", "Failed").Err(err).Msg("RunCypher")
+		return output, err
 	}
 
 	for result.Next() {
@@ -54,10 +56,10 @@ func RunCypher(session neo4j.Session, query string) [][]utils.Tag {
 		output = append(output, entry)
 	}
 
-	return output
+	return output, nil
 }
 
-func PostNode(session neo4j.Session, node string, label string, properties []utils.Tag) string {
+func PostNode(session neo4j.Session, node string, label string, properties []utils.Tag) error {
 
 	cypher := `CREATE (n: ` + node + ` { label: "` + label + `" })`
 
@@ -65,19 +67,18 @@ func PostNode(session neo4j.Session, node string, label string, properties []uti
 		cypher += ` SET n.` + item.Name + ` = "` + regexp_1.ReplaceAllString(item.Value, "\\'") + `"`
 	}
 
-	// cypher = regexp_1.ReplaceAllString(cypher, "'")
-
 	_, err := session.Run(cypher, map[string]interface{}{})
 	if err != nil {
-		log.Println(err)
+		logger.Logger.Error().Str("node", node).Str("label", label).Err(err).Msg("PostNode")
+		return err
 	}
 
-	output := fmt.Sprintf(`[ Function: PutNode ] [ Label: %v ] [ Node: %v ]`, label, node)
+	logger.Logger.Info().Str("node", node).Str("label", label).Msg("PostNode")
 
-	return output
+	return nil
 }
 
-func PutNode(session neo4j.Session, node string, label string, properties []utils.Tag) string {
+func PutNode(session neo4j.Session, node string, label string, properties []utils.Tag) error {
 
 	cypher := `MERGE (n: ` + node + ` { label: "` + label + `" })`
 
@@ -87,12 +88,13 @@ func PutNode(session neo4j.Session, node string, label string, properties []util
 
 	_, err := session.Run(cypher, map[string]interface{}{})
 	if err != nil {
-		log.Println(err)
+		logger.Logger.Error().Str("node", node).Str("label", label).Err(err).Msg("PostNode")
+		return err
 	}
 
-	output := fmt.Sprintf(`[ Function: PutNode ] [ Label: %v ] [ Node: %v ]`, label, node)
+	logger.Logger.Info().Str("node", node).Str("label", label).Msg("PostNode")
 
-	return output
+	return nil
 
 }
 
@@ -101,7 +103,7 @@ func PutNode(session neo4j.Session, node string, label string, properties []util
 
 func StoreDB(driver neo4j.Driver, params map[string]string, label string, bucket string, data utils.Output, wg *sync.WaitGroup) {
 
-	count := []string{}
+	count := []error{}
 
 	defer wg.Done()
 
